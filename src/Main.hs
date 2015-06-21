@@ -1,6 +1,19 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main where
+
+import Control.Applicative ((<|>))
+import Control.Monad.Trans (liftIO)
+
+import qualified Data.ByteString.Char8 as BSS
+
 import System.Environment
 import System.IO
 import System.Random
+
+import Snap.Core
+import Snap.Http.Server
+
 
 type Fortune = [String]
 
@@ -18,9 +31,15 @@ getRandomFortune fortunes = do
   randomNum <- getStdRandom (randomR (0, length fortunes))
   return $ unlines (fortunes !! randomNum)
 
+
+writeFortune :: [Fortune] -> Snap ()
+writeFortune fortunes = do
+  randomOne <- liftIO $ getRandomFortune fortunes
+  writeBS (BSS.pack randomOne)
+
 main = do
   (datFileName:_) <- getArgs
   contents <- readFile datFileName
   let fortunes = parseFortuneFile contents
-  randomOne <- getRandomFortune fortunes
-  putStrLn $ randomOne
+  quickHttpServe
+    $ ifTop (writeFortune fortunes)
